@@ -4,11 +4,9 @@
 
     a backend API for SNAP!
 
-    written by Bernat Romagosa
-    inspired by the original cloud API by Jens Mönig
+    written by Jens Mönig
 
-    Copyright (C) 2018 by Bernat Romagosa
-    Copyright (C) 2015 by Jens Mönig
+    Copyright (C) 2014 by Jens Mönig
 
     This file is part of Snap!.
 
@@ -29,717 +27,338 @@
 
 // Global settings /////////////////////////////////////////////////////
 
-/*global modules, SnapSerializer, nop, hex_sha512, DialogBoxMorph, Color,
-normalizeCanvas*/
+/*global modules, IDE_Morph, SnapSerializer, hex_sha512, alert, nop*/
 
-modules.cloud = '2018-June-15';
-
-// Global stuff
-
-var Cloud;
+modules.cloud = '2014-January-09';
 
 // Cloud /////////////////////////////////////////////////////////////
 
 function Cloud() {
-    this.init();
+    // If we are logged in, record our username
+    if(config.user !== undefined) {
+        this.user = config.user;
+    }
+    if(config.urls !== undefined) {
+        if(config.urls.create_project_url !== undefined) {
+            this.create_project_url = config.urls.create_project_url;
+        }
+        if(config.urls.create_file_url !== undefined) {
+            this.create_file_url = config.urls.create_file_url;
+        }
+        if(config.urls.list_project_url !== undefined) {
+            this.list_project_url = config.urls.list_project_url;
+        }
+        if(config.urls.login_url !== undefined) {
+            this.login_url = config.urls.login_url
+        }
+        if(config.urls.user_detail_url !== undefined) {
+            this.user_detail_url = config.urls.user_detail_url;
+        }
+        this.user_api_detail_url = config.urls.user_api_detail_url;
+        if(config.urls.project_url_root !== undefined) {
+            this.project_url_root = config.urls.project_url_root;
+        }
+    }
+    this.user_id = config.user_id;
+    this.classroom_id = null;
+    this.application_id = config.application_id;
 }
 
-Cloud.prototype.init = function () {
-    this.url = this.determineCloudDomain();
-    this.username = null;
-};
-
-Cloud.prototype.knownDomains = {
-    'Snap!Cloud' : 'https://cloud.snap.berkeley.edu',
-    'Snap!Cloud (cs10)' : 'https://snap-cloud.cs10.org',
-    'Snap!Cloud (staging)': 'https://snap-staging.cs10.org',
-    'localhost': 'http://localhost:8080',
-    'localhost (secure)': 'https://localhost:4431'
-};
-
-Cloud.prototype.defaultDomain = Cloud.prototype.knownDomains['Snap!Cloud'];
-
-Cloud.prototype.determineCloudDomain = function () {
-    // We dynamically determine the domain of the cloud server.
-    // Thise allows for easy mirrors and development servers.
-    // The domain is determined by:
-    // 1. <meta name='snap-cloud-domain' domain="X"> in snap.html.
-    // 2. The current page's domain
-    var currentDomain = window.location.host, // host includes the port.
-        metaTag = document.head.querySelector("[name='snap-cloud-domain']"),
-        cloudDomain = this.defaultDomain;
-
-    if (metaTag) { return metaTag.getAttribute('location'); }
-
-    Object.values(this.knownDomains).some(function (server) {
-        if (Cloud.isMatchingDomain(currentDomain, server)) {
-            cloudDomain = server;
-            return true;
-        }
-        return false;
-    });
-
-    return cloudDomain;
-};
-
-Cloud.isMatchingDomain = function (client, server) {
-    // A matching domain means that the client-server are not subject to
-    // 3rd party cookie restrictions.
-    // see https://tools.ietf.org/html/rfc6265#section-5.1.3
-    // This matches a domain at end of a subdomain URL.
-    var position = server.indexOf(client);
-    switch (position) {
-        case -1:
-            return false;
-        case 0:
-            return client === server;
-        default:
-            return /[\.\/]/.test(server[position - 1]) &&
-                server.length === position + client.length;
+Cloud.prototype.loggedInCallBack = function(success, failure) {
+    if(this.user_id === undefined) {
+        world.children[0].initializeCloudCallback(success, failure);
+    }
+    else
+    {
+        success();
     }
 };
-
-// Dictionary handling
-
-Cloud.prototype.parseDict = function (src) {
-    var dict = {};
-    if (!src) {return dict; }
-    src.split("&").forEach(function (entry) {
-        var pair = entry.split("="),
-            key = decodeURIComponent(pair[0]),
-            val = decodeURIComponent(pair[1]);
-        dict[key] = val;
-    });
-    return dict;
-};
-
-Cloud.prototype.encodeDict = function (dict) {
-    var str = '',
-        pair,
-        key;
-    if (!dict) {return null; }
-    for (key in dict) {
-        if (dict.hasOwnProperty(key)) {
-            pair = encodeURIComponent(key)
-                + '='
-                + encodeURIComponent(dict[key]);
-            if (str.length > 0) {
-                str += '&';
-            }
-            str += pair;
-        }
-    }
-    return str;
-};
-
-// Error handling
-
-Cloud.genericErrorMessage =
-    'There was an error while trying to access\n' +
-    'a Snap!Cloud service. Please try again later.';
-
-Cloud.prototype.genericError = function () {
-    throw new Error(Cloud.genericErrorMessage);
-};
-
-// Low level functionality
-
-Cloud.prototype.request = function (
-    method,
-    path,
-    onSuccess,
-    onError,
-    errorMsg,
-    wantsRawResponse,
-    body) {
-
-    var request = new XMLHttpRequest(),
-        myself = this;
-
-    try {
-        request.open(
-            method,
-            this.url + path,
-            true
-        );
-        request.setRequestHeader(
-            'Content-Type',
-            'application/json; charset=utf-8'
-        );
-        request.withCredentials = true;
-        request.onreadystatechange = function () {
-            if (request.readyState === 4) {
-                if (request.responseText) {
-                    var response =
-                        (!wantsRawResponse ||
-                        (request.responseText.indexOf('{"errors"') === 0)) ?
-                            JSON.parse(request.responseText) :
-                            request.responseText;
-
-                    if (response.errors) {
-                       onError.call(
-                            null,
-                            response.errors[0],
-                            errorMsg
-                        );
-                    } else {
-                        if (onSuccess) {
-                            onSuccess.call(null, response.message || response);
-                        }
-                    }
-                } else {
-                    if (onError) {
-                        onError.call(
-                            null,
-                            errorMsg || Cloud.genericErrorMessage,
-                            myself.url
-                        );
-                    } else {
-                        myself.genericError();
-                    }
-                }
-            }
-        };
-        request.send(body);
-    } catch (err) {
-        onError.call(this, err.toString(), 'Cloud Error');
-    }
-};
-
-Cloud.prototype.withCredentialsRequest = function (
-    method,
-    path,
-    onSuccess,
-    onError,
-    errorMsg,
-    wantsRawResponse,
-    body) {
-
-    var myself = this;
-    this.checkCredentials(
-        function (username) {
-            if (username) {
-                myself.request(
-                    method,
-                    // %username is replaced by the actual username
-                    path.replace('%username', encodeURIComponent(username)),
-                    onSuccess,
-                    onError,
-                    errorMsg,
-                    wantsRawResponse,
-                    body);
-            } else {
-                onError.call(this, 'You are not logged in', 'Snap!Cloud');
-            }
-        }
-    );
-};
-
-// Credentials management
-
-Cloud.prototype.initSession = function (onSuccess) {
-    var myself = this;
-    this.request(
-        'POST',
-        '/init',
-        function () { myself.checkCredentials(onSuccess); },
-        nop,
-        null,
-        true
-    );
-};
-
-Cloud.prototype.checkCredentials = function (onSuccess, onError, response) {
-    var myself = this;
-    this.getCurrentUser(
-        function (user) {
-            if (user.username) {
-                myself.username = user.username;
-                myself.verified = user.verified;
-            }
-            if (onSuccess) {
-            	onSuccess.call(
-                    null,
-                    user.username,
-                    user.isadmin,
-                    response ? JSON.parse(response) : null
-                );
-            }
-        },
-        onError
-    );
-};
-
-Cloud.prototype.getCurrentUser = function (onSuccess, onError) {
-    this.request(
-    	'GET',
-        '/users/c',
-        onSuccess,
-        onError,
-        'Could not retrieve current user'
-    );
-};
-
-Cloud.prototype.getUser = function (username, onSuccess, onError) {
-    this.request(
-    	'GET',
-        '/users/' + encodeURIComponent(username),
-        onSuccess,
-        onError,
-        'Could not retrieve user'
-    );
-};
-
-Cloud.prototype.logout = function (onSuccess, onError) {
-    this.username = null;
-    this.request(
-        'POST',
-        '/logout',
-        onSuccess,
-        onError,
-        'logout failed'
-    );
-};
+// Cloud: Snap! API
 
 Cloud.prototype.login = function (
-	username,
+    username,
     password,
-    persist,
-    onSuccess,
-    onError
+    callBack,
+    errorCall
 ) {
-    var myself = this;
-    this.request(
-        'POST',
-        '/users/' + encodeURIComponent(username) + '/login?' +
-            this.encodeDict({
-                persist: persist
-            }),
-        function (response) {
-            myself.checkCredentials(onSuccess, onError, response);
-        },
-        onError,
-        'login failed',
-        'false', // wants raw response
-        hex_sha512(password) // password travels inside the body
-    );
-};
-
-Cloud.prototype.signup = function (
-	username,
-    password,
-    passwordRepeat,
-    email,
-    onSuccess,
-    onError
-) {
-    this.request(
-        'POST',
-        '/users/' + encodeURIComponent(username) + '?' + this.encodeDict({
-            email: email,
-            password: hex_sha512(password),
-            password_repeat: hex_sha512(passwordRepeat)
-        }),
-        onSuccess,
-        onError,
-        'signup failed');
-};
-
-Cloud.prototype.changePassword = function (
-	password,
-    newPassword,
-    passwordRepeat,
-    onSuccess,
-    onError
-) {
-    this.withCredentialsRequest(
-        'POST',
-        '/users/%username/newpassword?' + this.encodeDict({
-            oldpassword: hex_sha512(password),
-            password_repeat: hex_sha512(passwordRepeat),
-            newpassword: hex_sha512(newPassword)
-        }),
-        onSuccess,
-        onError,
-        'Could not change password'
-    );
-
-};
-
-Cloud.prototype.resetPassword = function (username, onSuccess, onError) {
-    this.request(
-        'POST',
-        '/users/' + encodeURIComponent(username) + '/password_reset',
-        onSuccess,
-        onError,
-        'Password reset request failed'
-    );
-};
-
-Cloud.prototype.resendVerification = function (username, onSuccess, onError) {
-    this.request(
-        'POST',
-        '/users/' + encodeURIComponent(username) + '/resendverification',
-        onSuccess,
-        onError,
-        'Could not send verification email'
-    );
-};
-
-
-// Projects
-
-Cloud.prototype.saveProject = function (ide, onSuccess, onError) {
-    var myself = this;
-    this.checkCredentials(
-        function (username) {
-            if (username) {
-                var xml = ide.serializer.serialize(ide.stage),
-                    thumbnail = normalizeCanvas(
-                    	ide.stage.thumbnail(
-                        	SnapSerializer.prototype.thumbnailSize
-                    )).toDataURL(),
-                    body, mediaSize, size;
-
-                ide.serializer.isCollectingMedia = true;
-                body = {
-                    notes: ide.projectNotes,
-                    xml: xml,
-                    media: ide.hasChangedMedia ?
-                        ide.serializer.mediaXML(ide.projectName) : null,
-                    thumbnail: thumbnail
-                };
-                ide.serializer.isCollectingMedia = false;
-                ide.serializer.flushMedia();
-
-                mediaSize = body.media ? body.media.length : 0;
-                size = body.xml.length + mediaSize;
-                if (mediaSize > 10485760) {
-                    new DialogBoxMorph().inform(
-                        'Snap!Cloud - Cannot Save Project',
-                        'The media inside this project exceeds 10 MB.\n' +
-                            'Please reduce the size of costumes or sounds.\n',
-                        ide.world(),
-                        ide.cloudIcon(null, new Color(180, 0, 0))
-                    );
-                    throw new Error('Project media exceeds 10 MB size limit');
-                }
-
-                // check if serialized data can be parsed back again
-                try {
-                    ide.serializer.parse(body.xml);
-                } catch (err) {
-                    ide.showMessage(
-                    	'Serialization of program data failed:\n' + err
-                    );
-                    throw new Error(
-                    	'Serialization of program data failed:\n' + err
-                    );
-                }
-                if (body.media !== null) {
-                    try {
-                        ide.serializer.parse(body.media);
-                    } catch (err) {
-                        ide.showMessage(
-                        	'Serialization of media failed:\n' + err
-                        );
-                        throw new Error(
-                        	'Serialization of media failed:\n' + err
-                        );
-                    }
-                }
-                ide.serializer.isCollectingMedia = false;
-                ide.serializer.flushMedia();
-
-                ide.showMessage(
-                	'Uploading ' + Math.round(size / 1024) + ' KB...'
-                );
-
-                myself.request(
-                    'POST',
-                    '/projects/' +
-                        encodeURIComponent(username) +
-                        '/' +
-                        encodeURIComponent(ide.projectName),
-                    onSuccess,
-                    onError,
-                    'Project could not be saved',
-                    false,
-                    JSON.stringify(body) // POST body
-                );
-            } else {
-                onError.call(this, 'You are not logged in', 'Snap!Cloud');
+    var myself=this;
+    var myCallBack = function(data, textStatus, jqXHR) {
+        // Update user
+         SnapCloud.getCSRFToken();
+         $.ajax({
+            dataType: "json",
+            url: myself.user_api_detail_url,
+            success: function(data) {
+                myself.user_id = data.id;
+                config.urls.user_detail_url = "/users/"+data.id
+                callBack(data, textStatus);
             }
+         });
+    };
+    $.post(this.login_url, {'login': username, 'password': password}, myCallBack).fail(errorCall);
+};
+
+Cloud.prototype.saveProject = function (ide, callBack, errorCall) {
+    if(!this.loggedIn()) {
+        return;
+    }
+    // Helper function, kindly donated by http://stackoverflow.com/questions/4998908/convert-data-uri-to-file-then-append-to-formdata
+    function dataURItoBlob(dataURI, type) {
+        var binary;
+        if (dataURI.split(',')[0].indexOf('base64') >= 0)
+            binary = atob(dataURI.split(',')[1]);
+        else
+            binary = unescape(dataURI.split(',')[1]);
+        //var binary = atob(dataURI.split(',')[1]);
+        var array = [];
+        for(var i = 0; i < binary.length; i++) {
+            array.push(binary.charCodeAt(i));
+        }
+        return new Blob([new Uint8Array(array)], {type: type});
+    }
+
+    // Get a picture of the stage
+    var image_string = ide.stage.fullImageClassic().toDataURL();
+    var blob = dataURItoBlob(image_string, 'image/png');
+    var image = new FormData();
+    image.append('file', blob);
+
+    // Get the XML save file
+    var xml_string = 'data:text/xml,' + encodeURIComponent(ide.serializer.serialize(ide.stage));
+    blob = dataURItoBlob(xml_string, 'text/xml');
+    var xml = new FormData();
+    xml.append('file', blob);
+
+    var upload_project;
+
+    // Upload the two
+    var completed = 0;
+    var image_id, xml_id;
+    function success(data, textStatus, jqXHR) {
+        completed++;
+        if(completed == 2) {
+            // Upload project, then done
+            upload_project();
+        }
+    }
+    //$.post(this.create_file_url, {'file':blob}, success, "json");
+    var formData = new FormData();
+    $.ajax({
+        type: 'PUT',
+        url: this.create_file_url,
+        data: image,
+        processData: false,
+        contentType: false,
+        success: function(data) {
+            completed++;
+            image_id = data.id;
+
+            if(completed == 2) {
+                upload_project();
+            }
+        }
+    }).fail(errorCall);
+    $.ajax({
+        type:'PUT',
+        url: this.create_file_url,
+        data: xml,
+        processData: false,
+        contentType:false,
+        success: function(data) {
+            completed++;
+            xml_id = data.id;
+
+            if(completed == 2) {
+                upload_project();
+            }
+        }
+    }).fail(errorCall);
+
+
+    // Create the actual project
+    var create_project_url = this.create_project_url;
+    var myself = this;
+    upload_project = function() {
+        var update_cloud_settings;
+        if(myself.project_id !== undefined) {
+            $.ajax({
+                type: 'PUT',
+                url: create_project_url+myself.project_id+"/",
+                data: {
+                    name: ide.projectName,
+                    description: '',
+                    classroom: myself.classroom_id,
+                    application: myself.application_id,
+                    project: xml_id,
+                    screenshot: image_id
+                },
+                success: function(data, stuff) {
+                  update_cloud_settings(data, stuff);
+                },
+                dataType: 'json'
+            }).fail(errorCall);
+        } else {
+            $.post(create_project_url, {
+                name: ide.projectName,
+                description: '',
+                classroom: myself.classroom_id,
+                application: myself.application_id,
+                project: xml_id,
+                screenshot: image_id
+            }, function(data, stuff) {
+                update_cloud_settings(data, stuff);
+              }, 'json').fail(errorCall);
+        }
+        update_cloud_settings = function(data, stuff) {
+            myself.project_id = data['id'];
+            myself.name = data['name'];
+            myself.updateURL(myself.project_url_root + data['id']+'/run');
+            callBack(data, stuff);
+        }
+    }
+
+    // Alert user
+};
+
+
+
+Cloud.prototype.openProject = function(project, callBack, errorCall) {
+    var myself = this, ide = world.children[0];
+    var loadProject =
+    $.get(project.project_url, null, function(data) {
+        if(config.modules.module && !ide.isModuleLoaded)
+        {
+          ide.afterModuleUniversalCallback = function()
+          {
+              myself.project_id = project.id;
+              myself.name = project.name;
+              myself.updateURL(myself.project_url_root+project.id+"/run");
+              callBack(data);
+          };
+        }
+        else
+        {
+            myself.project_id = project.id;
+            myself.name = project.name;
+            myself.updateURL(myself.project_url_root+project.id+"/run");
+            callBack(data);
+        }
+    }).fail(errorCall);
+}
+
+Cloud.prototype.getProjectList = function(callBack, errorCall) {
+    var myself=this;
+    this.loggedInCallBack(
+        function()
+        {
+            $.get(myself.list_project_url+"?owner="+myself.user_id, null,
+            function(data) {
+                callBack(data);
+            }, "json").fail(errorCall);
+        },
+        function()
+        {
+            return
         }
     );
 };
 
-Cloud.prototype.getProjectList = function (onSuccess, onError, withThumbnail) {
-    var path = '/projects/%username?updatingnotes=true';
+Cloud.prototype.loggedIn = function() {
+    if(this.user_id === undefined) {
+        this.message("You are not logged in");
+        return false;
+    }
+    return true;
+};
 
-    if (withThumbnail) {
-        path += '&withthumbnail=true';
+Cloud.prototype.loggedInCallBack = function(success, failure) {
+    if(this.user_id === undefined) {
+        world.children[0].initializeCloudCallback(success, failure);
+    }
+    else
+    {
+        success();
+    }
+};
+
+Cloud.prototype.getClassroomList = function(callBack, errorCall) {
+    if(!this.loggedIn())
+        return;
+    $.get("/api/team/?user="+this.user_id, null,
+            function(data) {
+                callBack(data);
+            }, "json").fail(errorCall);
+
+};
+
+Cloud.prototype.message = function (string) {
+    alert(string);
+};
+
+Cloud.prototype.updateURL = function(URL) {
+    if(window.history !== undefined && window.history.pushState !== undefined) {
+        window.history.pushState({}, "", URL);
+    }
+};
+
+
+// Cloud: backend communication
+
+// Cloud: payload transformation
+
+// Cloud: user messages (to be overridden)
+
+Cloud.prototype.message = function (string) {
+    alert(string);
+};
+
+Cloud.prototype.getCSRFToken = function() {
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    var csrftoken = getCookie('csrftoken');
+
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+    function sameOrigin(url) {
+        // test that a given url is a same-origin URL
+        // url could be relative or scheme relative or absolute
+        var host = document.location.host; // host + port
+        var protocol = document.location.protocol;
+        var sr_origin = '//' + host;
+        var origin = protocol + sr_origin;
+        // Allow absolute or scheme relative URLs to same origin
+        return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+            // or any other URL that isn't scheme relative or absolute i.e relative.
+            !(/^(\/\/|http:|https:).*/.test(url));
     }
 
-    this.withCredentialsRequest(
-        'GET',
-        path,
-        onSuccess,
-        onError,
-        'Could not fetch projects'
-    );
-};
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                // Send the token to same-origin, relative URLs only.
+                // Send the token only if the method warrants CSRF protection
+                // Using the CSRFToken value acquired earlier
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
+}
+var Cloud;
 
-Cloud.prototype.getPublishedProjectList = function (
-	username,
-    page,
-    pageSize,
-    searchTerm,
-    onSuccess,
-    onError,
-    withThumbnail
-) {
-    var path = '/projects' +
-    		(username ? '/' + encodeURIComponent(username) : '') +
-	        '?ispublished=true';
-
-    if (withThumbnail) {
-        path += '&withthumbnail=true';
-    }
-
-    if (page) {
-        path += '&page=' + page + '&pagesize=' + (pageSize || 16);
-    }
-
-    if (searchTerm) {
-        path += '&matchtext=' + encodeURIComponent(searchTerm);
-    }
-
-    this.request(
-        'GET',
-        path,
-        onSuccess,
-        onError,
-        'Could not fetch projects'
-    );
-};
-
-Cloud.prototype.getThumbnail = function (
-	username,
-    projectName,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'GET',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/thumbnail',
-        onSuccess,
-        onError,
-        'Could not fetch thumbnail',
-        true
-    );
-};
-
-Cloud.prototype.getProject = function (projectName, delta, onSuccess, onError) {
-    this.withCredentialsRequest(
-        'GET',
-        '/projects/%username/' +
-            encodeURIComponent(projectName) +
-            (delta ? '?delta=' + delta : ''),
-        onSuccess,
-        onError,
-        'Could not fetch project ' + projectName,
-        true
-    );
-};
-
-Cloud.prototype.getPublicProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this.request(
-        'GET',
-        '/projects/' +
-            encodeURIComponent(username) +
-            '/' +
-            encodeURIComponent(projectName),
-        onSuccess,
-        onError,
-        'Could not fetch project ' + projectName,
-        true
-    );
-};
-
-Cloud.prototype.getProjectMetadata = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this.request(
-        'GET',
-        '/projects/' +
-            encodeURIComponent(username) +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/metadata',
-        onSuccess,
-        onError,
-        'Could not fetch metadata for ' + projectName
-    );
-};
-
-Cloud.prototype.getProjectVersionMetadata = function (
-        projectName,
-    onSuccess,
-    onError
-) {
-    this.withCredentialsRequest(
-        'GET',
-        '/projects/%username/' +
-            encodeURIComponent(projectName) +
-            '/versions',
-        onSuccess,
-        onError,
-        'Could not fetch versions for project ' + projectName
-    );
-};
-
-Cloud.prototype.deleteProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'DELETE',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName),
-        onSuccess,
-        onError,
-        'Could not delete project'
-    );
-};
-
-Cloud.prototype.shareProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'POST',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/metadata?ispublic=true',
-        onSuccess,
-        onError,
-        'Could not share project'
-    );
-};
-
-Cloud.prototype.unshareProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'POST',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/metadata?ispublic=false&ispublished=false',
-        onSuccess,
-        onError,
-        'Could not unshare project'
-    );
-};
-
-Cloud.prototype.publishProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'POST',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/metadata?ispublished=true',
-        onSuccess,
-        onError,
-        'Could not publish project'
-    );
-};
-
-Cloud.prototype.unpublishProject = function (
-	projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this[username ? 'request' : 'withCredentialsRequest'](
-        'POST',
-        '/projects/' +
-            (username ? encodeURIComponent(username) : '%username') +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/metadata?ispublished=false',
-        onSuccess,
-        onError,
-        'Could not unpublish project'
-    );
-};
-
-Cloud.prototype.remixProject = function (
-    projectName,
-    username,
-    onSuccess,
-    onError
-) {
-    this.withCredentialsRequest(
-        'POST',
-        '/projects/' +
-            encodeURIComponent(username) +
-            '/' +
-            encodeURIComponent(projectName) +
-            '/remix',
-        onSuccess,
-        onError,
-        'Could not remix project'
-    );
-};
-
-Cloud.prototype.updateNotes = function (
-	projectName,
-    notes,
-    onSuccess,
-    onError
-) {
-    this.withCredentialsRequest(
-        'POST',
-        '/projects/%username/' +
-            encodeURIComponent(projectName) +
-            '/metadata',
-        onSuccess,
-        onError,
-        'Could not update project notes',
-        false, // wants raw response
-        JSON.stringify({ notes: notes })
-    );
-};
-
+var SnapCloud = new Cloud();
