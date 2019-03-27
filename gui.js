@@ -2547,33 +2547,47 @@ IDE_Morph.prototype.cloudMenu = function () {
         );
         menu.addLine();
     }
-    if (!this.cloud.username) {
+    // if (!this.cloud.username) {
+    //     menu.addItem(
+    //         'Login...',
+    //         'initializeCloud'
+    //     );
+    //     menu.addItem(
+    //         'Signup...',
+    //         'createCloudAccount'
+    //     );
+    //     menu.addItem(
+    //         'Reset Password...',
+    //         'resetCloudPassword'
+    //     );
+    //     menu.addItem(
+    //         'Resend Verification Email...',
+    //         'resendVerification'
+    //     );
+    // } else {
+    //     menu.addItem(
+    //         localize('Logout') + ' ' + this.cloud.username,
+    //         'logout'
+    //     );
+    //     menu.addItem(
+    //         'Change Password...',
+    //         'changeCloudPassword'
+    //     );
+    // }
+
+    if (!SnapCloud.user_id) {
         menu.addItem(
             'Login...',
             'initializeCloud'
         );
-        menu.addItem(
-            'Signup...',
-            'createCloudAccount'
-        );
-        menu.addItem(
-            'Reset Password...',
-            'resetCloudPassword'
-        );
-        menu.addItem(
-            'Resend Verification Email...',
-            'resendVerification'
-        );
     } else {
         menu.addItem(
-            localize('Logout') + ' ' + this.cloud.username,
-            'logout'
-        );
-        menu.addItem(
-            'Change Password...',
-            'changeCloudPassword'
+            'My Projects',
+            'openMyProjects'
         );
     }
+
+
     if (shiftClicked) {
         menu.addLine();
         menu.addItem(
@@ -2619,23 +2633,70 @@ IDE_Morph.prototype.cloudMenu = function () {
             new Color(100, 0, 0)
         );
         menu.addLine();
+
+        // menu.addItem(
+        //     'open shared project from cloud...',
+        //     function () {
+        //         myself.prompt('Author name…', function (usr) {
+        //             myself.prompt('Project name...', function (prj) {
+        //                 myself.showMessage(
+        //                     'Fetching project\nfrom the cloud...'
+        //                 );
+        //                 myself.cloud.getPublicProject(
+        //                     prj,
+        //                     usr.toLowerCase(),
+        //                     function (projectData) {
+        //                         var msg;
+        //                         if (!Process.prototype.isCatchingErrors) {
+        //                             window.open(
+        //                                 'data:text/xml,' + projectData
+        //                             );
+        //                         }
+        //                         myself.nextSteps([
+        //                             function () {
+        //                                 msg = myself.showMessage(
+        //                                     'Opening project...'
+        //                                 );
+        //                             },
+        //                             function () {nop(); }, // yield (Chrome)
+        //                             function () {
+        //                                 myself.rawOpenCloudDataString(
+        //                                     projectData
+        //                                 );
+        //                             },
+        //                             function () {
+        //                                 msg.destroy();
+        //                             }
+        //                         ]);
+        //                     },
+        //                     myself.cloudError()
+        //                 );
+        //
+        //             }, null, 'project');
+        //         }, null, 'project');
+        //     },
+        //     null,
+        //     new Color(100, 0, 0)
+        // );
+
         menu.addItem(
             'open shared project from cloud...',
             function () {
-                myself.prompt('Author name…', function (usr) {
+                myself.prompt('Author nameâ€¦', function (usr) {
                     myself.prompt('Project name...', function (prj) {
+                        var id = 'Username=' +
+                            encodeURIComponent(usr.toLowerCase()) +
+                            '&ProjectName=' +
+                            encodeURIComponent(prj);
                         myself.showMessage(
                             'Fetching project\nfrom the cloud...'
                         );
-                        myself.cloud.getPublicProject(
-                            prj,
-                            usr.toLowerCase(),
+                        SnapCloud.getPublicProject(
+                            id,
                             function (projectData) {
                                 var msg;
                                 if (!Process.prototype.isCatchingErrors) {
-                                    window.open(
-                                        'data:text/xml,' + projectData
-                                    );
+                                    world.children[0].saveFileAs(projectData, 'data:text/xml', world.children[0].projetName + ' Project Data');
                                 }
                                 myself.nextSteps([
                                     function () {
@@ -2643,7 +2704,6 @@ IDE_Morph.prototype.cloudMenu = function () {
                                             'Opening project...'
                                         );
                                     },
-                                    function () {nop(); }, // yield (Chrome)
                                     function () {
                                         myself.rawOpenCloudDataString(
                                             projectData
@@ -5194,6 +5254,211 @@ IDE_Morph.prototype.userSetDragThreshold = function () {
     );
 };
 
+// // IDE_Morph cloud interface
+//
+// IDE_Morph.prototype.initializeCloud = function () {
+//     var myself = this,
+//         world = this.world();
+//     new DialogBoxMorph(
+//         null,
+//         function (user) {
+//             myself.cloud.login(
+//                 user.username.toLowerCase(),
+//                 user.password,
+//                 user.choice,
+//                 function (username, isadmin, response) {
+//                     myself.source = 'cloud';
+//                     if (!isNil(response.days_left)) {
+//                         new DialogBoxMorph().inform(
+//                             'Unverified account: ' +
+//                             response.days_left +
+//                             ' days left',
+//                             'You are now logged in, and your account\n' +
+//                             'is enabled for three days.\n' +
+//                             'Please use the verification link that\n' +
+//                             'was sent to your email address when you\n' +
+//                             'signed up.\n\n' +
+//                             'If you cannot find that email, please\n' +
+//                             'check your spam folder. If you still\n' +
+//                             'cannot find it, please use the "Resend\n' +
+//                             'Verification Email..." option in the cloud\n' +
+//                             'menu.\n\n' +
+//                             'You have ' + response.days_left + ' days left.',
+//                             world,
+//                             myself.cloudIcon(null, new Color(0, 180, 0))
+//                         );
+//                     } else {
+//                         myself.showMessage(response.message, 2);
+//                     }
+//                 },
+//                 myself.cloudError()
+//             );
+//         }
+//     ).withKey('cloudlogin').promptCredentials(
+//         'Sign in',
+//         'login',
+//         null,
+//         null,
+//         null,
+//         null,
+//         'stay signed in on this computer\nuntil logging out',
+//         world,
+//         myself.cloudIcon(),
+//         myself.cloudMsg
+//     );
+// };
+//
+// IDE_Morph.prototype.createCloudAccount = function () {
+//     var myself = this,
+//         world = this.world();
+//
+//     new DialogBoxMorph(
+//         null,
+//         function (user) {
+//             myself.cloud.signup(
+//                 user.username,
+//                 user.password,
+//                 user.passwordRepeat,
+//                 user.email,
+//                 function (txt, title) {
+//                     new DialogBoxMorph().inform(
+//                         title,
+//                         txt +
+//                             '.\n\nYou can now log in.',
+//                         world,
+//                         myself.cloudIcon(null, new Color(0, 180, 0))
+//                     );
+//                 },
+//                 myself.cloudError()
+//             );
+//         }
+//     ).withKey('cloudsignup').promptCredentials(
+//         'Sign up',
+//         'signup',
+//         'http://snap.berkeley.edu/tos.html',
+//         'Terms of Service...',
+//         'http://snap.berkeley.edu/privacy.html',
+//         'Privacy...',
+//         'I have read and agree\nto the Terms of Service',
+//         world,
+//         myself.cloudIcon(),
+//         myself.cloudMsg
+//     );
+// };
+//
+// IDE_Morph.prototype.resetCloudPassword = function () {
+//     var myself = this,
+//         world = this.world();
+//
+//     new DialogBoxMorph(
+//         null,
+//         function (user) {
+//             myself.cloud.resetPassword(
+//                 user.username,
+//                 function (txt, title) {
+//                     new DialogBoxMorph().inform(
+//                         title,
+//                         txt +
+//                             '\n\nAn e-mail with a link to\n' +
+//                             'reset your password\n' +
+//                             'has been sent to the address provided',
+//                         world,
+//                         myself.cloudIcon(null, new Color(0, 180, 0))
+//                     );
+//                 },
+//                 myself.cloudError()
+//             );
+//         }
+//     ).withKey('cloudresetpassword').promptCredentials(
+//         'Reset password',
+//         'resetPassword',
+//         null,
+//         null,
+//         null,
+//         null,
+//         null,
+//         world,
+//         myself.cloudIcon(),
+//         myself.cloudMsg
+//     );
+// };
+//
+// IDE_Morph.prototype.resendVerification = function () {
+//     var myself = this,
+//         world = this.world();
+//
+//     new DialogBoxMorph(
+//         null,
+//         function (user) {
+//             myself.cloud.resendVerification(
+//                 user.username,
+//                 function (txt, title) {
+//                     new DialogBoxMorph().inform(
+//                         title,
+//                         txt,
+//                         world,
+//                         myself.cloudIcon(null, new Color(0, 180, 0))
+//                     );
+//                 },
+//                 myself.cloudError()
+//             );
+//         }
+//     ).withKey('cloudresendverification').promptCredentials(
+//         'Resend verification email',
+//         'resendVerification',
+//         null,
+//         null,
+//         null,
+//         null,
+//         null,
+//         world,
+//         myself.cloudIcon(),
+//         myself.cloudMsg
+//     );
+// };
+//
+// IDE_Morph.prototype.changeCloudPassword = function () {
+//     var myself = this,
+//         world = this.world();
+//     new DialogBoxMorph(
+//         null,
+//         function (user) {
+//             myself.cloud.changePassword(
+//                 user.oldpassword,
+//                 user.password,
+//                 user.passwordRepeat,
+//                 function () {
+//                     myself.showMessage('password has been changed.', 2);
+//                 },
+//                 myself.cloudError()
+//             );
+//         }
+//     ).withKey('cloudpassword').promptCredentials(
+//         'Change Password',
+//         'changePassword',
+//         null,
+//         null,
+//         null,
+//         null,
+//         null,
+//         world,
+//         myself.cloudIcon(),
+//         myself.cloudMsg
+//     );
+// };
+//
+// IDE_Morph.prototype.logout = function () {
+//     var myself = this;
+//     this.cloud.logout(
+//         function () {
+//             myself.showMessage('disconnected.', 2);
+//         },
+//         function () {
+//             myself.showMessage('disconnected.', 2);
+//         }
+//     );
+// };
+
 // IDE_Morph cloud interface
 
 IDE_Morph.prototype.initializeCloud = function () {
@@ -5202,36 +5467,45 @@ IDE_Morph.prototype.initializeCloud = function () {
     new DialogBoxMorph(
         null,
         function (user) {
-            myself.cloud.login(
-                user.username.toLowerCase(),
+            var pwh = hex_sha512(user.password),
+                str;
+            SnapCloud.login(
+                user.username,
                 user.password,
-                user.choice,
-                function (username, isadmin, response) {
-                    myself.source = 'cloud';
-                    if (!isNil(response.days_left)) {
-                        new DialogBoxMorph().inform(
-                            'Unverified account: ' +
-                            response.days_left +
-                            ' days left',
-                            'You are now logged in, and your account\n' +
-                            'is enabled for three days.\n' +
-                            'Please use the verification link that\n' +
-                            'was sent to your email address when you\n' +
-                            'signed up.\n\n' +
-                            'If you cannot find that email, please\n' +
-                            'check your spam folder. If you still\n' +
-                            'cannot find it, please use the "Resend\n' +
-                            'Verification Email..." option in the cloud\n' +
-                            'menu.\n\n' +
-                            'You have ' + response.days_left + ' days left.',
-                            world,
-                            myself.cloudIcon(null, new Color(0, 180, 0))
-                        );
-                    } else {
-                        myself.showMessage(response.message, 2);
-                    }
+                function () {
+                    myself.showMessage('now connected.', 2);
                 },
-                myself.cloudError()
+                function () {
+                    myself.showMessage("Error connecting to cloud", 2);
+                }
+            );
+        }
+    ).withKey('cloudlogin').promptCredentials(
+        'Sign in',
+        'login',
+        null,
+        null,
+        null,
+        null,
+        'stay signed in on this computer\nuntil logging out',
+        world,
+        myself.cloudIcon(),
+        myself.cloudMsg
+    );
+};
+IDE_Morph.prototype.initializeCloudCallback = function (successCallBack, failureCallBack) {
+    var myself = this,
+        world = this.world();
+    new DialogBoxMorph(
+        null,
+        function (user) {
+            var pwh = hex_sha512(user.password),
+                str;
+            SnapCloud.login(
+                user.username,
+                user.password,
+                successCallBack,
+                failureCallBack
             );
         }
     ).withKey('cloudlogin').promptCredentials(
@@ -5248,155 +5522,10 @@ IDE_Morph.prototype.initializeCloud = function () {
     );
 };
 
-IDE_Morph.prototype.createCloudAccount = function () {
-    var myself = this,
-        world = this.world();
-
-    new DialogBoxMorph(
-        null,
-        function (user) {
-            myself.cloud.signup(
-                user.username,
-                user.password,
-                user.passwordRepeat,
-                user.email,
-                function (txt, title) {
-                    new DialogBoxMorph().inform(
-                        title,
-                        txt +
-                            '.\n\nYou can now log in.',
-                        world,
-                        myself.cloudIcon(null, new Color(0, 180, 0))
-                    );
-                },
-                myself.cloudError()
-            );
-        }
-    ).withKey('cloudsignup').promptCredentials(
-        'Sign up',
-        'signup',
-        'http://snap.berkeley.edu/tos.html',
-        'Terms of Service...',
-        'http://snap.berkeley.edu/privacy.html',
-        'Privacy...',
-        'I have read and agree\nto the Terms of Service',
-        world,
-        myself.cloudIcon(),
-        myself.cloudMsg
-    );
-};
-
-IDE_Morph.prototype.resetCloudPassword = function () {
-    var myself = this,
-        world = this.world();
-
-    new DialogBoxMorph(
-        null,
-        function (user) {
-            myself.cloud.resetPassword(
-                user.username,
-                function (txt, title) {
-                    new DialogBoxMorph().inform(
-                        title,
-                        txt +
-                            '\n\nAn e-mail with a link to\n' +
-                            'reset your password\n' +
-                            'has been sent to the address provided',
-                        world,
-                        myself.cloudIcon(null, new Color(0, 180, 0))
-                    );
-                },
-                myself.cloudError()
-            );
-        }
-    ).withKey('cloudresetpassword').promptCredentials(
-        'Reset password',
-        'resetPassword',
-        null,
-        null,
-        null,
-        null,
-        null,
-        world,
-        myself.cloudIcon(),
-        myself.cloudMsg
-    );
-};
-
-IDE_Morph.prototype.resendVerification = function () {
-    var myself = this,
-        world = this.world();
-
-    new DialogBoxMorph(
-        null,
-        function (user) {
-            myself.cloud.resendVerification(
-                user.username,
-                function (txt, title) {
-                    new DialogBoxMorph().inform(
-                        title,
-                        txt,
-                        world,
-                        myself.cloudIcon(null, new Color(0, 180, 0))
-                    );
-                },
-                myself.cloudError()
-            );
-        }
-    ).withKey('cloudresendverification').promptCredentials(
-        'Resend verification email',
-        'resendVerification',
-        null,
-        null,
-        null,
-        null,
-        null,
-        world,
-        myself.cloudIcon(),
-        myself.cloudMsg
-    );
-};
-
-IDE_Morph.prototype.changeCloudPassword = function () {
-    var myself = this,
-        world = this.world();
-    new DialogBoxMorph(
-        null,
-        function (user) {
-            myself.cloud.changePassword(
-                user.oldpassword,
-                user.password,
-                user.passwordRepeat,
-                function () {
-                    myself.showMessage('password has been changed.', 2);
-                },
-                myself.cloudError()
-            );
-        }
-    ).withKey('cloudpassword').promptCredentials(
-        'Change Password',
-        'changePassword',
-        null,
-        null,
-        null,
-        null,
-        null,
-        world,
-        myself.cloudIcon(),
-        myself.cloudMsg
-    );
-};
-
-IDE_Morph.prototype.logout = function () {
-    var myself = this;
-    this.cloud.logout(
-        function () {
-            myself.showMessage('disconnected.', 2);
-        },
-        function () {
-            myself.showMessage('disconnected.', 2);
-        }
-    );
+IDE_Morph.prototype.openMyProjects = function() {
+    if(config.urls !== undefined) {
+        window.open(config.urls.user_detail_url);
+    }
 };
 
 IDE_Morph.prototype.saveProjectToCloud = function (name) {
@@ -5404,13 +5533,27 @@ IDE_Morph.prototype.saveProjectToCloud = function (name) {
     if (name) {
         this.showMessage('Saving project\nto the cloud...');
         this.setProjectName(name);
-        this.cloud.saveProject(
+        SnapCloud.saveProject(
             this,
             function () {myself.showMessage('saved.', 2); },
             this.cloudError()
         );
     }
 };
+
+
+// IDE_Morph.prototype.saveProjectToCloud = function (name) {
+//     var myself = this;
+//     if (name) {
+//         this.showMessage('Saving project\nto the cloud...');
+//         this.setProjectName(name);
+//         this.cloud.saveProject(
+//             this,
+//             function () {myself.showMessage('saved.', 2); },
+//             this.cloudError()
+//         );
+//     }
+// };
 
 IDE_Morph.prototype.exportProjectMedia = function (name) {
     var menu, media;
@@ -6065,16 +6208,50 @@ ProjectDialogMorph.prototype.setSource = function (source) {
     this.srcBar.children.forEach(function (button) {
         button.refresh();
     });
+    // switch (this.source) {
+    // case 'cloud':
+    //     msg = myself.ide.showMessage('Updating\nproject list...');
+    //     this.projectList = [];
+    //     myself.ide.cloud.getProjectList(
+    //         function (response) {
+    //             // Don't show cloud projects if user has since switch panes.
+    //             if (myself.source === 'cloud') {
+    //                 myself.installCloudProjectList(response.projects);
+    //             }
+    //             msg.destroy();
+    //         },
+    //         function (err, lbl) {
+    //             msg.destroy();
+    //             myself.ide.cloudError().call(null, err, lbl);
+    //         }
+    //     );
+    //     return;
+    // case 'examples':
+    //     this.projectList = this.getExamplesProjectList();
+    //     break;
+    // case 'local':
+    //     this.projectList = this.getLocalProjectList();
+    //     break;
+    // }
+
     switch (this.source) {
     case 'cloud':
         msg = myself.ide.showMessage('Updating\nproject list...');
         this.projectList = [];
-        myself.ide.cloud.getProjectList(
-            function (response) {
-                // Don't show cloud projects if user has since switch panes.
-                if (myself.source === 'cloud') {
-                    myself.installCloudProjectList(response.projects);
-                }
+        SnapCloud.getProjectList(
+            function (projectList) {
+                myself.installCloudProjectList(projectList);
+                msg.destroy();
+            },
+            function (err, lbl) {
+                msg.destroy();
+                myself.ide.cloudError().call(null, err, lbl);
+            }
+        );
+        this.classroomList = [];
+        SnapCloud.getClassroomList(
+            function (classroomList) {
+                myself.installCloudClassroomList(classroomList);
                 msg.destroy();
             },
             function (err, lbl) {
@@ -6086,21 +6263,88 @@ ProjectDialogMorph.prototype.setSource = function (source) {
     case 'examples':
         this.projectList = this.getExamplesProjectList();
         break;
+    case 'goals':
+        this.projectList = this.getGoalProjectList();
+        break;
     case 'local':
         this.projectList = this.getLocalProjectList();
         break;
     }
 
     this.listField.destroy();
-    this.listField = new ListMorph(
-        this.projectList,
-        this.projectList.length > 0 ?
-                function (element) {
-                    return element.name || element;
-                } : null,
-        null,
-        function () {myself.ok(); }
-    );
+    this.classroomListField.destroy();
+
+    // this.listField = new ListMorph(
+    //     this.projectList,
+    //     this.projectList.length > 0 ?
+    //             function (element) {
+    //                 return element.name || element;
+    //             } : null,
+    //     null,
+    //     function () {myself.ok(); }
+    // );
+
+    	if(this.source === 'goals'){
+		this.listField = new ListMorph(
+			this.projectList,
+			this.projectList.length > 0 ?
+					function (element) {
+						return element.thumb;
+					} : null,
+			null,
+			function () {myself.ok();}
+		);
+
+    //We need action declaration here to select default
+		this.listField.action = function (item) {
+            var img, desc;
+            if (item === undefined) {return; }
+            if (myself.nameField) {
+               myself.nameField.setContents(item.name || '');
+            }
+			var request = new XMLHttpRequest();
+			request.open("GET", config.urls.goals_url, false);
+			request.send();
+			var JSON_object = JSON.parse(request.responseText);
+			for (var i = 0; i < JSON_object.length; i++){
+				if(JSON_object[i].name === item.name){
+					img = JSON_object[i].img_url;
+					desc = JSON_object[i].description;
+					myself.notesText.text = desc || '';
+					myself.notesText.drawNew();
+					myself.notesField.contents.adjustBounds();
+					myself.preview.texture = img || null;
+					myself.preview.cachedTexture = img;
+					myself.preview.drawNew();
+					myself.edit();
+				}
+			}
+    };
+    this.listField.action(this.listField.elements[0]);
+	}
+	else{
+		this.listField = new ListMorph(
+			this.projectList,
+			this.projectList.length > 0 ?
+					function (element) {
+						return element.name;
+					} : null,
+			null,
+			function () {myself.ok(); }
+		);
+	}
+
+    if(this.source === 'save'){
+        this.classroomListField = new ListMorph(
+            this.classroomList,
+            this.classroomList.length > 0 ?
+                    function (element) {
+                        return element.team_name;
+                    } : null,
+            null,
+            function () {myself.ok();}
+        );
+    }
 
     this.fixListFieldItemColors();
     this.listField.fixLayout = nop;
@@ -9492,4 +9736,100 @@ SoundRecorderDialogMorph.prototype.destroy = function () {
         this.mediaRecorder.stream.getTracks()[0].stop();
     }
     SoundRecorderDialogMorph.uber.destroy.call(this);
+};
+
+ProjectDialogMorph.prototype.installCloudClassroomList = function (cl) {
+    var myself = this;
+    this.classroomList = cl || [];
+    this.classroomList.sort(function (x, y) {
+        return x.name < y.name ? -1 : 1;
+    });
+
+    this.classroomListField.destroy();
+    this.classroomListField = new ListMorph(
+        this.classroomList,
+        this.classroomList.length > 0 ?
+                function (element) {
+                    return element.team_name;
+                } : null,
+        [ // format: display shared project names bold
+            [
+                'bold',
+                function (proj) {return proj.approved === true; }
+            ]
+        ],
+        function () {myself.ok(); }
+    );
+	this.fixClassRoomItemColors();
+    this.classroomListField.fixLayout = nop;
+    this.classroomListField.edge = InputFieldMorph.prototype.edge;
+    this.classroomListField.fontSize = InputFieldMorph.prototype.fontSize;
+    this.classroomListField.typeInPadding = InputFieldMorph.prototype.typeInPadding;
+    this.classroomListField.contrast = InputFieldMorph.prototype.contrast;
+    this.classroomListField.drawNew = InputFieldMorph.prototype.drawNew;
+    this.classroomListField.drawRectBorder = InputFieldMorph.prototype.drawRectBorder;
+	this.classroomListField.action = function (item) {
+        if (item === undefined) {return; }
+        if (item.team) {
+            SnapCloud.classroom_id = item.team;
+        }
+        myself.edit();
+    };
+	this.classroomListField.select(this.classroomListField.elements[0],true);
+    this.body.add(this.classroomListField);
+    this.fixLayout();
+};
+
+ProjectDialogMorph.prototype.fixClassRoomItemColors = function () {
+    // remember to always fixLayout() afterwards for the changes
+    // to take effect
+    var myself = this;
+    this.classroomListField.contents.children[0].alpha = 0;
+    this.classroomListField.contents.children[0].children.forEach(function (item) {
+        item.pressColor = myself.titleBarColor.darker(20);
+        item.color = new Color(0, 0, 0, 0);
+        item.noticesTransparentClick = true;
+    });
+};
+
+ProjectDialogMorph.prototype.getGoalProjectList = function () {
+    var dir, dta,
+        projects = [], thumbnail;
+	var request = new XMLHttpRequest();
+	if(request.open("GET", config.urls.goals_url, false)){
+	request.send();
+	}
+	var JSON_object = JSON.parse(request.responseText);
+	for (var i = 0; i < JSON_object.length; i++){
+		//preload images
+		thumbnail = new Image();
+		thumbnail.src = JSON_object[i].thumb_url
+		dta = {
+			name: JSON_object[i].name,
+			img: JSON_object[i].img_url,
+			thumb: thumbnail,
+			notes: JSON_object[i].description
+		};
+		projects.push(dta);
+	}
+    var request = new XMLHttpRequest();
+    request.open("GET", config.urls.goals_url, false);
+    request.send();
+    var JSON_object = JSON.parse(request.responseText);
+    for (var i = 0; i < JSON_object.length; i++){
+        //preload images
+        thumbnail = new Image();
+        thumbnail.src = JSON_object[i].thumb_url
+        dta = {
+            name: JSON_object[i].name,
+            img: JSON_object[i].img_url,
+            thumb: thumbnail,
+            notes: JSON_object[i].description
+        };
+        projects.push(dta);
+    }
+    projects.sort(function (x, y) {
+        return x.name < y.name ? -1 : 1;
+    });
+    return projects;
 };
