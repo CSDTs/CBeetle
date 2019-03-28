@@ -5569,7 +5569,7 @@ IDE_Morph.prototype.cloudError = function () {
             return;
         }
         new DialogBoxMorph().inform(
-            'Snap!Cloud',
+            'CBeetle!Cloud',
             (url ? url + '\n' : '')
                 + response,
             myself.world(),
