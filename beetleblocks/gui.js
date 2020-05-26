@@ -22,7 +22,7 @@ IDE_Morph.prototype.setExtent = function (point) {
 IDE_Morph.prototype.originalCreateLogo = IDE_Morph.prototype.createLogo;
 IDE_Morph.prototype.createLogo = function () {
     this.originalCreateLogo();
-    this.logo.texture = 'beetleblocks/logo.png';
+    this.logo.texture = 'beetleblocks/logo2.png';
     this.logo.drawNew();
 };
 
