@@ -49,7 +49,7 @@ IDE_Morph.prototype.startTutorial = function (world) {
     this.tutorial.addSlide((new DialogBoxMorph).tutorialWindow(
                 'Welcome to BeetleBlocks!', // title
                 new AnimationMorph( // img
-                    'beetleblocks/assets/tutorial/move/', // path
+                    config.asset_path + 'beetleblocks/assets/tutorial/move/', // path
                     93, // frameCount
                     50, // frameDuration
                     new Point(707, 205) // extent
@@ -64,7 +64,7 @@ IDE_Morph.prototype.startTutorial = function (world) {
     this.tutorial.addSlide((new DialogBoxMorph).tutorialWindow(
                 'Scripting Area',
                 new AnimationMorph(
-                    'beetleblocks/assets/tutorial/movesphere/',
+                    config.asset_path + 'beetleblocks/assets/tutorial/movesphere/',
                     63,
                     50,
                     new Point(707, 205) // extent
@@ -79,7 +79,7 @@ IDE_Morph.prototype.startTutorial = function (world) {
     this.tutorial.addSlide((new DialogBoxMorph).tutorialWindow(
                 'Viewport',
                 new AnimationMorph(
-                    'beetleblocks/assets/tutorial/rotate/',
+                    config.asset_path + 'beetleblocks/assets/tutorial/rotate/',
                     296,
                     50,
                     new Point(707, 205) // extent

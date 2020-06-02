@@ -142,7 +142,7 @@ SpriteMorph.prototype.initBeetle = function () {
     this.beetle.shape.material = material;
 
     var loader = new THREE.OBJLoader();
-    loader.load('beetleblocks/assets/meshes/beetle-color-standing.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-color-standing.obj', function (object) {
             myself.beetle.standingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -152,7 +152,7 @@ SpriteMorph.prototype.initBeetle = function () {
             object.rotation.set(Math.PI, 0, -Math.PI / 2);
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-color-flying.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-color-flying.obj', function (object) {
             myself.beetle.flyingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -162,7 +162,7 @@ SpriteMorph.prototype.initBeetle = function () {
             object.rotation.set(Math.PI, 0, -Math.PI / 2);
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-body-standing.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-body-standing.obj', function (object) {
             myself.beetle.standingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -172,7 +172,7 @@ SpriteMorph.prototype.initBeetle = function () {
             object.rotation.set(Math.PI, 0, -Math.PI / 2);
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-body-flying.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-body-flying.obj', function (object) {
             myself.beetle.flyingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -182,7 +182,7 @@ SpriteMorph.prototype.initBeetle = function () {
             object.rotation.set(Math.PI, 0, -Math.PI / 2);
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-white.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-white.obj', function (object) {
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
                     child.material = new THREE.MeshBasicMaterial({ color: 0xEEEEEE })
@@ -193,7 +193,7 @@ SpriteMorph.prototype.initBeetle = function () {
             myself.beetle.flyingShape.add(object.clone());
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-black-standing.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-black-standing.obj', function (object) {
             myself.beetle.standingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -203,7 +203,7 @@ SpriteMorph.prototype.initBeetle = function () {
             object.rotation.set(Math.PI, 0, -Math.PI / 2);
     });
 
-    loader.load('beetleblocks/assets/meshes/beetle-black-flying.obj', function (object) {
+    loader.load(config.asset_path + 'beetleblocks/assets/meshes/beetle-black-flying.obj', function (object) {
             myself.beetle.flyingShape.add(object);
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
@@ -1108,7 +1108,7 @@ StageMorph.prototype.init = function (globals) {
     this.trailsCanvas = this.renderer.domElement;
 
     (new THREE.FontLoader()).load(
-            'beetleblocks/assets/fonts/helvetiker_regular.typeface.json',
+        config.asset_path + 'beetleblocks/assets/fonts/helvetiker_regular.typeface.json',
             function (response) {
                 myself.font = response;
             });
@@ -1192,7 +1192,7 @@ StageMorph.prototype.initScene = function () {
 
     Object.keys(axes).forEach(function (axis) {
         var map = loader.load(
-                'beetleblocks/assets/' + axis + '.png',
+                config.asset_path + 'beetleblocks/assets/' + axis + '.png',
                 function () { if (myself.renderer) { myself.reRender(); }}),
             material = new THREE.SpriteMaterial( { map: map, color: axes[axis].color } ),
             sprite = new THREE.Sprite(material);

@@ -22,7 +22,7 @@ IDE_Morph.prototype.setExtent = function (point) {
 IDE_Morph.prototype.originalCreateLogo = IDE_Morph.prototype.createLogo;
 IDE_Morph.prototype.createLogo = function () {
     this.originalCreateLogo();
-    this.logo.texture = 'beetleblocks/logo2.png';
+    this.logo.texture = config.asset_path + 'beetleblocks/logo.png';
     this.logo.drawNew();
 };
 
@@ -139,6 +139,7 @@ IDE_Morph.prototype.projectMenu = function () {
         menu.addLine();
         menu.addItem('My Profile', function () { window.open('/users/' + SnapCloud.username, true) });
         menu.addItem('My Projects', function () { window.open('/myprojects', true) });
+        menu.addItem('Open...', 'openProjectsBrowser');
     }
     /*
     menu.addItem(
@@ -556,7 +557,7 @@ IDE_Morph.prototype.openIn = function (world) {
     };
 
     this.reactToWorldResize(world.bounds);
-
+    
     function getURL(url) {
         try {
             var request = new XMLHttpRequest();
@@ -571,6 +572,32 @@ IDE_Morph.prototype.openIn = function (world) {
             return '';
         }
     }
+
+    var load_project = function() {
+        if(config.project !== undefined) {
+            myself.cloud.openProject(config.project,
+                function(response) {
+                    myself.source = 'cloud';
+                    myself.droppedText(response);
+            }, myself.cloudError());
+        }
+
+        if(config.demo !== undefined) {
+            var request = new XMLHttpRequest();
+            request.open("GET", config.urls.demos_url, false);
+            request.send();
+            var JSON_object = JSON.parse(request.responseText);
+            for (var i = 0; i < JSON_object.length; i++){
+                if(JSON_object[i]["name"] === config.demo.name){
+                    src = getURL(JSON_object[i]["project_url"]);
+                }
+            }
+            world.children[0].openProjectString(src);
+        }
+    }
+
+
+        load_project();
 
     // This function returns the value of a parameter given its key
     function getParameterByName(name) {
@@ -1179,7 +1206,7 @@ ProjectDialogMorph.prototype.openProject = function () {
         if (myself.source === 'cloud') {
             myself.openCloudProject(proj);
         } else if (myself.source === 'examples') {
-            src = myself.ide.getURL('beetleblocks/examples/' + proj.name + '.xml');
+            src = myself.ide.getURL(config.asset_path + 'beetleblocks/examples/' + proj.name + '.xml');
             myself.ide.openProjectString(src);
             myself.destroy();
         } else { // 'local'
@@ -1205,31 +1232,10 @@ IDE_Morph.prototype.rawOpenCloudDataString = function (str) {
 
 ProjectDialogMorph.prototype.rawOpenCloudProject = function (proj) {
     var myself = this;
-    SnapCloud.reconnect(
-        function () {
-            SnapCloud.callService(
-                'getProject',
-                function (response) {
-                    SnapCloud.disconnect();
-                    myself.ide.source = 'cloud';
-                    myself.ide.droppedText(response[0].SourceCode);
-                    if (proj.Public === 'true') {
-                        location.hash = '#present:Username=' +
-                            encodeURIComponent(SnapCloud.username) +
-                            '&ProjectName=' +
-                            encodeURIComponent(proj.ProjectName);
-                        SnapCloud.postRequest(
-                                'project',
-                                {
-                                    projectName: proj.ProjectName,
-                                    username: SnapCloud.username,
-                                    thumbnail: proj.Thumbnail
-                                });
-                    }
-                },
-                myself.ide.cloudError(),
-                [proj.ProjectName]
-            );
+    SnapCloud.openProject(proj,
+        function (response) {
+            myself.ide.source = 'cloud';
+            myself.ide.droppedText(response);
         },
         myself.ide.cloudError()
     );
@@ -1813,7 +1819,7 @@ IDE_Morph.prototype.setLanguage = function (lang, callback) {
 
     myself.originalSetLanguage(lang, function () {
         var translation = document.getElementById('bb-language'),
-            src = 'beetleblocks/lang-' + lang + '.js',
+            src = config.asset_path + 'beetleblocks/lang-' + lang + '.js',
             myInnerSelf = this;
         if (translation) {
             document.head.removeChild(translation);
