@@ -14,7 +14,40 @@ BeetleCloud.prototype.init = function (url) {
     this.applicationID = 92;
     this.dataID = '';
     this.imgID = 1000;
-    this.project_url = config.project.project_url;
+
+    if(config.urls !== undefined) {
+        if(config.urls.create_project_url !== undefined) {
+            this.create_project_url = config.urls.create_project_url;
+        }
+        if(config.urls.create_file_url !== undefined) {
+            this.create_file_url = config.urls.create_file_url;
+        }
+        if(config.urls.list_project_url !== undefined) {
+            this.list_project_url = config.urls.list_project_url;
+        }
+        if(config.urls.login_url !== undefined) {
+            this.login_url = config.urls.login_url
+        }
+        if(config.urls.user_detail_url !== undefined) {
+            this.user_detail_url = config.urls.user_detail_url;
+        }
+        this.user_api_detail_url = config.urls.user_api_detail_url;
+        if(config.urls.project_url_root !== undefined) {
+            this.project_url_root = config.urls.project_url_root;
+        }
+    }
+
+    if(config.project !== undefined){
+        if(config.project.project_url !== undefined){
+            this.project_url = config.project.project_url;
+        }
+        if(config.project.project_id !== undefined){
+            this.project_id = config.project.project_id;
+        }
+    }
+
+    
+    
     // console.log(this.project_url);
     // this.getPublicProject(config.user, config.project.name, )
 
@@ -208,7 +241,7 @@ BeetleCloud.prototype.saveProject = function (ide, callBack, errorCall) {
                         throw new Error('Serialization of program data failed:\n' + err);
                     }
 
-                    ide.showMessage('Uploading project...');
+                    ide.showMessage('Uploading project...', 2);
 
                     var upload_project;
                     var completed = 0;
@@ -216,13 +249,15 @@ BeetleCloud.prototype.saveProject = function (ide, callBack, errorCall) {
 
                     let success1 = function(data, stuff){
                         ide.showMessage('Project Created!', 2);
-                        // myself.project_id = data['id'];
+                        myself.project_id = data['id'];
                         // myself.name = data['name'];
                         myself.updateURL(/projects/+ data['id'] +'/run');
                         // callBack(data, stuff);
+                        console.log('no yeet');
                     }
                     let error1 = function(xhr, error){
                         console.error(error);
+                        console.log('yeet');
                     }
 
                     let successImage = function(data){
@@ -326,12 +361,17 @@ BeetleCloud.prototype.updateURL = function(URL) {
 
 BeetleCloud.prototype.openProject = function(project, callBack, errorCall){
     var myself = this, ide = world.children[0];
+    console.log(project);
+
+
+
     var loadProject =
     $.get(project.project_url, null, function(data) {
       
             myself.project_id = project.id;
             myself.name = project.name;
             myself.updateURL('/projects/'+project.id+"/run");
+            
             callBack(data);
 
     }).fail(errorCall);
@@ -459,18 +499,40 @@ BeetleCloud.prototype.getCSRFToken = function() {
   };
   
 BeetleCloud.prototype.createProject = function(projectName, appNum, dataNum, imgNum, callBack, errorBack){
-    $.post('/api/projects/', {
-        name: projectName,
-        description: '',
-        classroom: '',
-        application: appNum,
-        project: dataNum,
-        screenshot: imgNum,
-      }, callBack, 'json').fail(errorBack);
+   
+    if(this.project_id !== undefined) {
+        $.ajax({
+            type: 'PUT',
+            url: '/api/projects/'+this.project_id+"/",
+            data: {
+                name: ide.projectName,
+                description: '',
+                classroom: dataNum.classroom_id,
+                application: appNum,
+                project: dataNum,
+                screenshot: imgNum
+            },
+            success: callBack,
+            dataType: 'json'
+        }).fail(errorBack);
+    }else{
+        $.post('/api/projects/', {
+            name: projectName,
+            description: '',
+            classroom: '',
+            application: appNum,
+            project: dataNum,
+            screenshot: imgNum,
+          }, callBack, 'json').fail(errorBack);
+    }
+   
+
 
       
 
 }
+
+
 Cloud = BeetleCloud;
 
 var SnapCloud = new BeetleCloud(
