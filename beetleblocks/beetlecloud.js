@@ -248,16 +248,14 @@ BeetleCloud.prototype.saveProject = function (ide, callBack, errorCall) {
                     var image_id, xml_id;
 
                     let success1 = function(data, stuff){
-                        ide.showMessage('Project Created!', 2);
+                        ide.showMessage('Project Saved!', 2);
                         myself.project_id = data['id'];
                         // myself.name = data['name'];
                         myself.updateURL(/projects/+ data['id'] +'/run');
                         // callBack(data, stuff);
-                        console.log('no yeet');
                     }
                     let error1 = function(xhr, error){
                         console.error(error);
-                        console.log('yeet');
                     }
 
                     let successImage = function(data){
