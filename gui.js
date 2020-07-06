@@ -6259,25 +6259,31 @@ ProjectDialogMorph.prototype.installCloudProjectList = function (pl) {
             myself.preview.texture = '';
             myself.preview.drawNew();
             // we ask for the thumbnail when selecting a project
-            myself.ide.cloud.getThumbnail(
-                null, // username is implicit
-                item.name,
-                function (thumbnail) {
-                    myself.preview.texture = thumbnail;
-                    myself.preview.cachedTexture = null;
-                    myself.preview.drawNew();
-                });
-            (new SpeechBubbleMorph(new TextMorph(
-                localize('last changed') + '\n' + item.lastupdated,
-                null,
-                null,
-                null,
-                null,
-                'center'
-            ))).popUp(
-                myself.world(),
-                myself.preview.rightCenter().add(new Point(2, 0))
-            );
+            // myself.ide.cloud.getThumbnail(
+            //     null, // username is implicit
+            //     item.name,
+            //     function (thumbnail) {
+            //         myself.preview.texture = thumbnail;
+            //         myself.preview.cachedTexture = null;
+            //         myself.preview.drawNew();
+            //     });
+            myself.preview.texture = item.screenshot_url;
+            myself.preview.cachedTexture = null;
+            myself.preview.drawNew();
+            // xml = myself.ide.serializer.parse(item);
+            // myself.preview.texture = xml.childNamed('thumbnail').contents
+            // || null;
+            // (new SpeechBubbleMorph(new TextMorph(
+            //     localize('last changed') + '\n' + item.lastupdated,
+            //     null,
+            //     null,
+            //     null,
+            //     null,
+            //     'center'
+            // ))).popUp(
+            //     myself.world(),
+            //     myself.preview.rightCenter().add(new Point(2, 0))
+            // );
         }
         if (item.ispublic) {
             myself.shareButton.hide();
@@ -6389,10 +6395,31 @@ ProjectDialogMorph.prototype.rawOpenCloudProject = function (proj, delta) {
 };
 
 ProjectDialogMorph.prototype.saveProject = function () {
+    
     var name = this.nameField.contents().text.text,
         notes = this.notesText.text,
         myself = this;
 
+    var isUnique = true;
+
+    for(var i = 0; i < this.projectList.length; i++){
+        if (this.projectList[i].name == name && !this.projectList[i].approved) {
+            isUnique = false;
+            break;
+        }
+
+        if(isUnique) {this.ide.cloud.project_id = undefined};
+
+        
+    }
+    //     for(var i = 0; i < this.projectList.elements.length; i++){
+    //         if (this.projectList.elements[i].name == name && !this.projectList.elements[i].approved) {
+    //         isUnique = i;
+    //         break;
+    //         }
+    //     }
+    //     if(isUnique) SnapCloud.project_id = undefined;
+    
     this.ide.projectNotes = notes || this.ide.projectNotes;
     if (name) {
         if (this.source === 'cloud') {

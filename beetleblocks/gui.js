@@ -22,7 +22,7 @@ IDE_Morph.prototype.setExtent = function (point) {
 IDE_Morph.prototype.originalCreateLogo = IDE_Morph.prototype.createLogo;
 IDE_Morph.prototype.createLogo = function () {
     this.originalCreateLogo();
-    this.logo.texture = config.asset_path + 'beetleblocks/logo.png';
+    this.logo.texture = config.asset_path + 'beetleblocks/logo2.png';
     this.logo.drawNew();
 };
 
@@ -148,7 +148,7 @@ IDE_Morph.prototype.projectMenu = function () {
             'Attempt to perform an automatic\nmigration of all your projects\nin the old cloud');
     */
     menu.addLine();
-    menu.addItem('Save                                       Ctrl+S', 'save');
+    menu.addItem('Save                                       Ctrl+S', function(){myself.saveProjectToCloud(this.projectName)});
     menu.addItem('Save As...', 'saveProjectsBrowser');
 
     menu.addLine();
@@ -167,11 +167,11 @@ IDE_Morph.prototype.projectMenu = function () {
                 new Color(100, 0, 0)
                 );
     }
-    menu.addItem(
-            'Download 2D lines as...',
-            function () { myself.downloadSVG() },
-            'download the currently rendered 2D lines\ninto an SVG file'
-            );
+    // menu.addItem(
+    //         'Download 2D lines as...',
+    //         function () { myself.downloadSVG() },
+    //         'download the currently rendered 2D lines\ninto an SVG file'
+    //         );
 
     var submenu = new MenuMorph(myself);
     submenu.addItem(
@@ -557,7 +557,6 @@ IDE_Morph.prototype.openIn = function (world) {
     };
 
     this.reactToWorldResize(world.bounds);
-    
     function getURL(url) {
         try {
             var request = new XMLHttpRequest();
