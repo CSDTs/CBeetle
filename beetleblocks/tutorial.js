@@ -47,7 +47,7 @@ IDE_Morph.prototype.startTutorial = function (world) {
     }; 
 
     this.tutorial.addSlide((new DialogBoxMorph).tutorialWindow(
-                'Welcome to BeetleBlocks!', // title
+                'Welcome to AnanseBot!', // title
                 new AnimationMorph( // img
                     config.asset_path + 'beetleblocks/assets/tutorial/move/', // path
                     93, // frameCount
