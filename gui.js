@@ -2495,18 +2495,9 @@ IDE_Morph.prototype.snapMenu = function () {
         }
     );
     menu.addItem(
-        'Snap! website',
+        'CSDT Homepage',
         function () {
-            window.open('http://snap.berkeley.edu/', 'SnapWebsite');
-        }
-    );
-    menu.addItem(
-        'Download source',
-        function () {
-            window.open(
-                'http://snap.berkeley.edu/snapsource/snap.zip',
-                'SnapSource'
-            );
+            window.open('https://csdt.org/', 'SnapWebsite');
         }
     );
     if (world.isDevMode) {
