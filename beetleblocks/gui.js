@@ -223,11 +223,11 @@ IDE_Morph.prototype.projectMenu = function () {
     if (!SnapCloud.username) {
         menu.addItem(
                 'Login',
-                function () { window.open('/login'); }
+                function () { window.open('/accounts/login/'); }
                 );
         menu.addItem(
                 'Create an account',
-                function () { window.open('/signup'); }
+                function () { window.open('/accounts/signup/'); }
                 );
         menu.addItem(
                 'Reset Password...',
